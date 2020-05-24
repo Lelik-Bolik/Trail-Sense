@@ -7,8 +7,11 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import com.kylecorry.trail_sense.R
 import com.kylecorry.trail_sense.shared.UserPreferences
+import com.kylecorry.trail_sense.shared.livesensors.LiveBarometer
+import com.kylecorry.trail_sense.shared.livesensors.PressureLiveData
 import com.kylecorry.trail_sense.shared.sensors.Barometer
 import com.kylecorry.trail_sense.shared.sensors.GPS
 import com.kylecorry.trail_sense.shared.sensors.IBarometer
@@ -59,6 +62,9 @@ class BarometerFragment : Fragment(), Observer {
 
     private lateinit var chart: PressureChart
 
+    private val viewModel: WeatherViewModel by viewModels {
+        WeatherVmFactory(LiveBarometer(requireContext()))
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -83,6 +89,10 @@ class BarometerFragment : Fragment(), Observer {
         )
         trendImg = view.findViewById(R.id.barometer_trend)
         historyDurationTxt = view.findViewById(R.id.pressure_history_duration)
+
+        viewModel.pressure.observe(viewLifecycleOwner, androidx.lifecycle.Observer { result ->
+            pressureTxt.text = result.toString()
+        })
 
         return view
     }
@@ -153,9 +163,6 @@ class BarometerFragment : Fragment(), Observer {
         val symbol = PressureUnitUtils.getSymbol(units)
 
         val format = PressureUnitUtils.getDecimalFormat(units)
-
-        pressureTxt.text = "${format.format(PressureUnitUtils.convert(pressure, units))}  $symbol"
-
 
         val convertedPressureHistory = convertedReadings.subList(0, convertedReadings.lastIndex)
 
