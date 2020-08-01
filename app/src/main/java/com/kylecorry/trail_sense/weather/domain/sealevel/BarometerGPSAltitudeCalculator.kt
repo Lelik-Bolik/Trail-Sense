@@ -20,7 +20,7 @@ internal class BarometerGPSAltitudeCalculator(private val maxNaturalPressureChan
             if (it != lastReading) {
                 if (hasAltitudeChanged(lastReading, it)) {
                     val barometerAltitude = altitude + getAltitudeChange(lastReading.pressure, it.pressure)
-                    val alpha = 0.7f
+                    val alpha = 0.5f
                     altitude = it.altitude * alpha + barometerAltitude * (1 - alpha)
                 }
             }
