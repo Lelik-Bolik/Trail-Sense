@@ -104,30 +104,20 @@ class BarometerAlarmReceiver: BroadcastReceiver() {
 
     private fun getTrueAltitude(readings: List<Float>): Float {
         val reading = readings.median()
-        val lastReading = getLastAltitude()
 
-        val alpha = 0.8f
-        return if (reading != 0f && lastReading != 0f){
-            (1 - alpha) * lastReading + alpha * reading
-        } else if (reading != 0f){
+        return if (reading != 0f){
             reading
         } else {
-            lastReading
+            getLastAltitude()
         }
     }
 
     private fun getTruePressure(readings: List<Float>): Float {
         val reading = readings.median()
-        val lastReading = getLastPressure()
-
-        val alpha = 0.8f
-
-        return if (reading != 0f && lastReading != 0f){
-            (1 - alpha) * lastReading + alpha * reading
-        } else if (reading != 0f){
+        return if (reading != 0f){
             reading
         } else {
-            lastReading
+            getLastPressure()
         }
     }
 

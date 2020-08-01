@@ -6,7 +6,7 @@ import com.kylecorry.trail_sense.weather.domain.PressureAltitudeReading
 import java.time.Duration
 import kotlin.math.abs
 
-internal class BarometerGPSAltitudeCalculator(private val maxNaturalPressureChange: Float = 5f) :
+internal class BarometerGPSAltitudeCalculator(private val maxNaturalPressureChange: Float = 3f) :
     IAltitudeCalculator {
     override fun convert(readings: List<PressureAltitudeReading>): List<AltitudeReading> {
 
@@ -18,20 +18,10 @@ internal class BarometerGPSAltitudeCalculator(private val maxNaturalPressureChan
 
         return readings.map {
             if (it != lastReading) {
-                val dt = Duration.between(lastReading.time, it.time).toMillis() * MILLIS_TO_HOURS
-                val dp = (it.pressure - lastReading.pressure) / dt
-
-                if (abs(dp) > maxNaturalPressureChange) {
-                    // Barometer will show change
+                if (hasAltitudeChanged(lastReading, it)) {
                     val barometerAltitude = altitude + getAltitudeChange(lastReading.pressure, it.pressure)
-                    altitude = barometerAltitude
-
-                    altitude = if (abs(it.altitude - barometerAltitude) < MAX_ALTITUDE_DIFF) {
-                        it.altitude
-                    } else {
-                        barometerAltitude
-                    }
-
+                    val alpha = 0.7f
+                    altitude = it.altitude * alpha + barometerAltitude * (1 - alpha)
                 }
             }
             lastReading = it
@@ -40,6 +30,13 @@ internal class BarometerGPSAltitudeCalculator(private val maxNaturalPressureChan
                 altitude
             )
         }
+    }
+
+    private fun hasAltitudeChanged(lastReading: PressureAltitudeReading, currentReading: PressureAltitudeReading): Boolean {
+        val dt = Duration.between(lastReading.time, currentReading.time).toMillis() * MILLIS_TO_HOURS
+        val dpdt = (currentReading.pressure - lastReading.pressure) / dt
+        val da = (currentReading.altitude - lastReading.altitude)
+        return abs(dpdt) > maxNaturalPressureChange && abs(da) > MAX_ALTITUDE_DIFF
     }
 
     private fun getAltitudeChange(lastPressure: Float, currentPressure: Float): Float {
