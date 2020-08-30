@@ -21,7 +21,11 @@ class Bearing(_value: Float){
             }
 
     fun withDeclination(declination: Float): Bearing {
-        return Bearing(value + declination)
+        return plus(declination)
+    }
+
+    fun plus(angle: Float): Bearing {
+        return Bearing(value + angle)
     }
 
     fun angleTo(other: Bearing): Float {

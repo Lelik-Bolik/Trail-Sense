@@ -13,18 +13,16 @@ import androidx.core.view.children
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.kylecorry.trail_sense.R
+import com.kylecorry.trail_sense.navigation.domain.*
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.Flashlight
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.FlashlightService
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.SosService
-import com.kylecorry.trail_sense.navigation.domain.Beacon
-import com.kylecorry.trail_sense.navigation.domain.FlashlightState
 import com.kylecorry.trail_sense.navigation.infrastructure.*
 import com.kylecorry.trail_sense.navigation.infrastructure.database.BeaconRepo
 import com.kylecorry.trail_sense.navigation.infrastructure.share.LocationSharesheet
 import com.kylecorry.trail_sense.shared.system.UiUtils
 import com.kylecorry.trail_sense.shared.UserPreferences
 import com.kylecorry.trail_sense.shared.sensors.*
-import com.kylecorry.trail_sense.shared.sensors.declination.AutoDeclinationProvider
 import com.kylecorry.trail_sense.shared.sensors.declination.IDeclinationProvider
 import com.kylecorry.trail_sense.shared.switchToFragment
 import java.util.*
@@ -72,16 +70,7 @@ class NavigatorFragment(
     private lateinit var compassAccuracy: LinearLayout
     private lateinit var speedTxt: TextView
 
-    private lateinit var navigationSheet: LinearLayout
-    private lateinit var beaconName: TextView
-    private lateinit var beaconComments: ImageButton
-    private lateinit var beaconDistance: TextView
-    private lateinit var beaconDirection: TextView
-    private lateinit var beaconDirectionCardinal: TextView
-    private lateinit var beaconElevationView: LinearLayout
-    private lateinit var beaconElevation: TextView
-    private lateinit var beaconElevationDiff: TextView
-    private lateinit var beaconEta: TextView
+    private lateinit var destinationPanel: DestinationPanel
 
     private lateinit var beaconIndicators: List<ImageView>
 
@@ -91,6 +80,7 @@ class NavigatorFragment(
     private var flashlightState = FlashlightState.Off
 
     private lateinit var sensorService: SensorService
+    private val navigationService = NavigationService()
 
     private var timer: Timer? = null
     private var handler: Handler? = null
@@ -122,16 +112,7 @@ class NavigatorFragment(
         compassAccuracy = view.findViewById(R.id.compass_accuracy_view)
         speedTxt = view.findViewById(R.id.speed)
 
-        navigationSheet = view.findViewById(R.id.navigation_sheet)
-        beaconName = view.findViewById(R.id.beacon_name)
-        beaconComments = view.findViewById(R.id.beacon_comment_btn)
-        beaconDistance = view.findViewById(R.id.beacon_distance)
-        beaconDirection = view.findViewById(R.id.beacon_direction)
-        beaconDirectionCardinal = view.findViewById(R.id.beacon_direction_cardinal)
-        beaconElevationView = view.findViewById(R.id.beacon_elevation_view)
-        beaconElevation = view.findViewById(R.id.beacon_elevation)
-        beaconElevationDiff = view.findViewById(R.id.beacon_elevation_diff)
-        beaconEta = view.findViewById(R.id.beacon_eta)
+        destinationPanel = DestinationPanel(view.findViewById(R.id.navigation_sheet))
 
         val beacons = mutableListOf<ImageView>()
 
@@ -211,23 +192,27 @@ class NavigatorFragment(
 
         rulerBtn.setOnClickListener {
             if (ruler.visibility == View.VISIBLE) {
-                rulerBtn.imageTintList = ColorStateList.valueOf(UiUtils.androidTextColorSecondary(requireContext()))
-                rulerBtn.backgroundTintList = ColorStateList.valueOf(UiUtils.androidBackgroundColorSecondary(requireContext()))
+                rulerBtn.imageTintList =
+                    ColorStateList.valueOf(UiUtils.androidTextColorSecondary(requireContext()))
+                rulerBtn.backgroundTintList =
+                    ColorStateList.valueOf(UiUtils.androidBackgroundColorSecondary(requireContext()))
                 ruler.visibility = View.GONE
             } else {
-                rulerBtn.imageTintList = ColorStateList.valueOf(resources.getColor(R.color.colorSecondary, null))
-                rulerBtn.backgroundTintList = ColorStateList.valueOf(resources.getColor(R.color.colorPrimary, null))
+                rulerBtn.imageTintList =
+                    ColorStateList.valueOf(resources.getColor(R.color.colorSecondary, null))
+                rulerBtn.backgroundTintList =
+                    ColorStateList.valueOf(resources.getColor(R.color.colorPrimary, null))
                 ruler.visibility = View.VISIBLE
             }
         }
 
-        if (!Flashlight.hasFlashlight(requireContext())){
+        if (!Flashlight.hasFlashlight(requireContext())) {
             flashlightBtn.visibility = View.GONE
         }
 
         flashlightBtn.setOnClickListener {
             flashlightState = getNextFlashlightState(flashlightState)
-            when(flashlightState) {
+            when (flashlightState) {
                 FlashlightState.On -> {
                     SosService.stop(requireContext().applicationContext)
                     FlashlightService.start(requireContext().applicationContext)
@@ -243,17 +228,16 @@ class NavigatorFragment(
             }
         }
 
-        beaconComments.setOnClickListener {
-            if (navigationVM.hasComment) {
-                UiUtils.alert(requireContext(), navigationVM.commentTitle, navigationVM.comment)
-            }
-        }
-
         accuracyView.setOnClickListener {
             UiUtils.alert(
                 requireContext(),
                 getString(R.string.accuracy_info_title),
-                getString(R.string.accuracy_info, navigationVM.gpsHorizontalAccuracy, navigationVM.gpsVerticalAccuracy, navigationVM.gpsSatellites)
+                getString(
+                    R.string.accuracy_info,
+                    navigationVM.gpsHorizontalAccuracy,
+                    navigationVM.gpsVerticalAccuracy,
+                    navigationVM.gpsSatellites
+                )
             )
         }
 
@@ -268,8 +252,8 @@ class NavigatorFragment(
         }
     }
 
-    private fun getNextFlashlightState(currentState: FlashlightState) : FlashlightState {
-        return when(currentState){
+    private fun getNextFlashlightState(currentState: FlashlightState): FlashlightState {
+        return when (currentState) {
             FlashlightState.On -> FlashlightState.SOS
             FlashlightState.SOS -> FlashlightState.Off
             FlashlightState.Off -> FlashlightState.On
@@ -277,7 +261,7 @@ class NavigatorFragment(
     }
 
     private fun updateFlashlightUI() {
-        when(flashlightState) {
+        when (flashlightState) {
             FlashlightState.On -> {
                 flashlightBtn.setImageResource(R.drawable.flashlight)
                 flashlightBtn.imageTintList =
@@ -366,64 +350,16 @@ class NavigatorFragment(
 
     private fun updateUI() {
 
-        if (System.currentTimeMillis() - lastUpdated < 16){
+        if (System.currentTimeMillis() - lastUpdated < 16) {
             return
         }
         lastUpdated = System.currentTimeMillis()
 
-        if (context == null) {
-            return
-        }
+        context ?: return
 
         updateFlashlightUI()
-
-        navigationVM.updateVisibleBeacon()
-
-        if (navigationVM.showNavigationSheet) {
-            navigationSheet.visibility = View.VISIBLE
-        } else {
-            navigationSheet.visibility = View.GONE
-        }
-
-        if (navigationVM.hasComment) {
-            beaconComments.visibility = View.VISIBLE
-        } else {
-            beaconComments.visibility = View.GONE
-        }
-
-        beaconDistance.text = navigationVM.beaconDistance
-        beaconName.text = navigationVM.beaconName
-        beaconDirection.text = navigationVM.beaconDirection
-        beaconDirectionCardinal.text = navigationVM.beaconCardinalDirection
-
-        if (navigationVM.showBeaconElevation) {
-            beaconElevationView.visibility = View.VISIBLE
-        } else {
-            beaconElevationView.visibility = View.GONE
-        }
-
-        beaconElevation.text = navigationVM.beaconElevation
-        beaconElevationDiff.text = navigationVM.beaconElevationDiff
-        beaconElevationDiff.setTextColor(requireContext().getColor(navigationVM.beaconElevationDiffColor))
-
-        val eta = navigationVM.beaconEta
-        beaconEta.text =
-            if (eta == null) getString(R.string.distance_away) else getString(R.string.eta, eta)
-
-        gpsAccuracyTxt.text = navigationVM.gpsAccuracy
-        compassAccuracyTxt.text = navigationVM.compassAccuracy
-
-        if (navigationVM.showCompassAccuracy) {
-            compassAccuracy.visibility = View.VISIBLE
-        } else {
-            compassAccuracy.visibility = View.INVISIBLE
-        }
-
-        if (navigationVM.showGpsAccuracy) {
-            gpsAccuracy.visibility = View.VISIBLE
-        } else {
-            gpsAccuracy.visibility = View.INVISIBLE
-        }
+        updateDestination()
+        updateAccuracy()
 
         speedTxt.text = getString(
             R.string.speed_format,
@@ -458,6 +394,23 @@ class NavigatorFragment(
             if (it.height == 0) {
                 it.visibility = View.INVISIBLE
             }
+        }
+    }
+
+    private fun updateAccuracy() {
+        gpsAccuracyTxt.text = navigationVM.gpsAccuracy
+        compassAccuracyTxt.text = navigationVM.compassAccuracy
+
+        if (navigationVM.showCompassAccuracy) {
+            compassAccuracy.visibility = View.VISIBLE
+        } else {
+            compassAccuracy.visibility = View.INVISIBLE
+        }
+
+        if (navigationVM.showGpsAccuracy) {
+            gpsAccuracy.visibility = View.VISIBLE
+        } else {
+            gpsAccuracy.visibility = View.INVISIBLE
         }
     }
 
@@ -558,5 +511,33 @@ class NavigatorFragment(
             onLocationUpdate()
         }
     }
+
+
+    private fun updateDestination() {
+        val destination = getDestination()
+
+        if (destination == null) {
+            destinationPanel.hide()
+            return
+        }
+
+        val position = getPosition()
+        val delta = getDelta(position, destination)
+        destinationPanel.show(position, destination, delta)
+    }
+
+    private fun getDestination(): Beacon? {
+        navigationVM.updateVisibleBeacon()
+        return navigationVM.visibleBeacon
+    }
+
+    private fun getDelta(position: Position, beacon: Beacon): NavigationDelta {
+        return navigationService.delta(position, beacon, declinationProvider.declination)
+    }
+
+    private fun getPosition(): Position {
+        return Position(gps.location, altimeter.altitude, compass.bearing, gps.speed)
+    }
+
 
 }

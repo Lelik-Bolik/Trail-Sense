@@ -2,10 +2,9 @@ package com.kylecorry.trail_sense.navigation.domain
 
 import android.location.Location
 import com.kylecorry.trail_sense.navigation.domain.compass.Bearing
-import com.kylecorry.trail_sense.navigation.domain.compass.DeclinationCalculator
 import com.kylecorry.trail_sense.shared.domain.Coordinate
-import com.kylecorry.trail_sense.shared.math.deltaAngle
-import com.kylecorry.trail_sense.shared.math.normalizeAngle
+import java.time.Duration
+import kotlin.math.roundToLong
 
 class NavigationService {
 
@@ -20,6 +19,15 @@ class NavigationService {
         val angleBetween = from.bearing.angleTo(vector.direction)
         val deltaElevation = if (to.elevation == null) null else to.elevation - from.elevation
         return NavigationDelta(angleBetween, vector.distance, deltaElevation)
+    }
+
+    fun eta(delta: NavigationDelta, speed: Float): Duration? {
+        val distance = delta.distance
+        if (speed == 0.0f || distance == null){
+            return null
+        }
+
+        return Duration.ofSeconds((distance / speed).roundToLong())
     }
 
 }

@@ -329,7 +329,7 @@ class NavigationViewModel(
         visibleBeacon = null
     }
 
-    private var visibleBeacon: Beacon? = null
+    var visibleBeacon: Beacon? = null
 
     val moonBeaconVisibility: Int
         get() {

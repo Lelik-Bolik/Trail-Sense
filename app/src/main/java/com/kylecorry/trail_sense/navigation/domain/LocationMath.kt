@@ -46,6 +46,14 @@ object LocationMath {
         }
     }
 
+    fun convertToBigUnit(meters: Float, units: UserPreferences.DistanceUnits): Float {
+        return if (units == UserPreferences.DistanceUnits.Feet) {
+            convertFeetToMiles(convertMetersToFeet(meters))
+        } else {
+            convertMetersToKilometers(meters)
+        }
+    }
+
     fun convertToBaseSpeed(metersPerSecond: Float, units: UserPreferences.DistanceUnits): Float {
         return if (units == UserPreferences.DistanceUnits.Feet) {
             convertUnitPerSecondsToUnitPerHours(
