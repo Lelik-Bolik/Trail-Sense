@@ -25,12 +25,12 @@ import com.kylecorry.trail_sense.shared.sensors.IGPS
 import com.kylecorry.trail_sense.shared.sensors.SensorService
 
 
-class BeaconListFragment(private val _repo: BeaconRepo?, private val _gps: IGPS?) : Fragment() {
+class BeaconListFragment(private val _repo: BeaconRepo?) : Fragment() {
 
     private lateinit var beaconRepo: BeaconRepo
     private lateinit var gps: IGPS
 
-    constructor() : this(null, null)
+    constructor() : this(null)
 
     private lateinit var beaconList: RecyclerView
     private lateinit var createBtn: FloatingActionButton
@@ -54,8 +54,9 @@ class BeaconListFragment(private val _repo: BeaconRepo?, private val _gps: IGPS?
         val view = inflater.inflate(R.layout.fragment_beacon_list, container, false)
 
         beaconRepo = _repo ?: BeaconRepo(requireContext())
-        gps = _gps ?: sensorService.getGPS()
+        gps = sensorService.getGPS()
         location = gps.location
+
         navigationService = NavigationService()
 
         beaconList = view.findViewById(R.id.beacon_recycler)

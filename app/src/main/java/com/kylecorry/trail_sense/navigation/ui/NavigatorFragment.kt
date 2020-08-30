@@ -200,7 +200,7 @@ class NavigatorFragment(
         beaconBtn.setOnClickListener {
             if (!navigationVM.showDestination) {
                 switchToFragment(
-                    BeaconListFragment(beaconRepo, gps),
+                    BeaconListFragment(beaconRepo),
                     addToBackStack = true
                 )
             } else {

@@ -98,8 +98,7 @@ class NavigationViewModel(
                 return navigationService.navigate(
                     gps.location,
                     this.coordinate,
-                    gps.altitude,
-                    useTrueNorth
+                    declination
                 ).direction.value
             }
             return null
@@ -118,8 +117,7 @@ class NavigationViewModel(
         val direction = navigationService.navigate(
             gps.location,
             beacon.coordinate,
-            gps.altitude,
-            useTrueNorth
+            declination
         ).direction.value
         return abs(deltaAngle(direction, azimuth)) < 20
     }
@@ -155,8 +153,7 @@ class NavigationViewModel(
                         navigationService.navigate(
                             gps.location,
                             it.coordinate,
-                            gps.altitude,
-                            useTrueNorth
+                            declination
                         )
                     )
                 }
@@ -172,8 +169,7 @@ class NavigationViewModel(
                 val vector = navigationService.navigate(
                     gps.location,
                     this.coordinate,
-                    gps.altitude,
-                    useTrueNorth
+                    declination
                 )
                 return LocationMath.distanceToReadableString(vector.distance, distanceUnits)
             }
@@ -189,8 +185,7 @@ class NavigationViewModel(
                 val vector = navigationService.navigate(
                     gps.location,
                     this.coordinate,
-                    gps.altitude,
-                    useTrueNorth
+                    declination
                 )
                 val bearing = vector.direction.value
                 return "${bearing.roundToInt()}°"
@@ -204,8 +199,7 @@ class NavigationViewModel(
                 val vector = navigationService.navigate(
                     gps.location,
                     this.coordinate,
-                    gps.altitude,
-                    useTrueNorth
+                    declination
                 )
                 return vector.direction.direction.symbol
             }
@@ -264,8 +258,7 @@ class NavigationViewModel(
                 val vector = navigationService.navigate(
                     gps.location,
                     this.coordinate,
-                    gps.altitude,
-                    useTrueNorth
+                    declination
                 )
                 val distance =
                     vector.distance * Math.PI / 2.0 // Used to estimate non-linear distance within 2 standard deviations

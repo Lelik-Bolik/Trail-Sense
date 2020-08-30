@@ -158,8 +158,7 @@ class PlaceBeaconFragment(
                     this.replace(
                         R.id.fragment_holder,
                         BeaconListFragment(
-                            beaconRepo,
-                            gps
+                            beaconRepo
                         )
                     )
                 }
