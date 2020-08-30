@@ -1,5 +1,6 @@
 package com.kylecorry.trail_sense.navigation.domain.compass
 
+import com.kylecorry.trail_sense.shared.math.deltaAngle
 import com.kylecorry.trail_sense.shared.math.normalizeAngle
 import kotlin.math.roundToInt
 
@@ -21,5 +22,9 @@ class Bearing(_value: Float){
 
     fun withDeclination(declination: Float): Bearing {
         return Bearing(value + declination)
+    }
+
+    fun angleTo(other: Bearing): Float {
+        return deltaAngle(value, other.value)
     }
 }
