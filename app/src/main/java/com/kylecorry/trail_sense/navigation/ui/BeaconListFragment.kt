@@ -91,10 +91,7 @@ class BeaconListFragment(private val _repo: BeaconRepo?) : Fragment() {
             parentFragmentManager.doTransaction {
                 this.replace(
                     R.id.fragment_holder,
-                    PlaceBeaconFragment(
-                        beaconRepo,
-                        gps
-                    )
+                    PlaceBeaconFragment()
                 )
                 addToBackStack(javaClass.name)
             }
@@ -216,12 +213,7 @@ class BeaconListFragment(private val _repo: BeaconRepo?) : Fragment() {
                             parentFragmentManager.doTransaction {
                                 this.replace(
                                     R.id.fragment_holder,
-                                    PlaceBeaconFragment(
-                                        beaconRepo,
-                                        gps,
-                                        null,
-                                        beacon
-                                    )
+                                    PlaceBeaconFragment(null, beacon)
                                 )
                                 addToBackStack(javaClass.name)
                             }

@@ -14,20 +14,26 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.kylecorry.trail_sense.R
 import com.kylecorry.trail_sense.navigation.domain.*
+import com.kylecorry.trail_sense.navigation.domain.compass.Bearing
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.Flashlight
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.FlashlightService
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.SosService
 import com.kylecorry.trail_sense.navigation.infrastructure.*
 import com.kylecorry.trail_sense.navigation.infrastructure.database.BeaconRepo
 import com.kylecorry.trail_sense.navigation.infrastructure.share.LocationSharesheet
+import com.kylecorry.trail_sense.shared.Throttle
 import com.kylecorry.trail_sense.shared.system.UiUtils
 import com.kylecorry.trail_sense.shared.UserPreferences
+import com.kylecorry.trail_sense.shared.domain.Accuracy
+import com.kylecorry.trail_sense.shared.domain.Coordinate
+import com.kylecorry.trail_sense.shared.roundPlaces
 import com.kylecorry.trail_sense.shared.sensors.*
 import com.kylecorry.trail_sense.shared.sensors.declination.IDeclinationProvider
 import com.kylecorry.trail_sense.shared.switchToFragment
 import java.util.*
 import kotlin.concurrent.fixedRateTimer
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 class NavigatorFragment(
     private val initialDestination: Beacon? = null,
@@ -41,15 +47,12 @@ class NavigatorFragment(
     private lateinit var declinationProvider: IDeclinationProvider
     private lateinit var orientation: DeviceOrientation
     private lateinit var altimeter: IAltimeter
-
-    private var lastUpdated = System.currentTimeMillis()
+    private val throttle = Throttle(20)
 
     // TODO: Extract ruler
     private var isRulerSetup = false
     private var areRulerTextViewsAligned = false
 
-    private lateinit var roundCompass: ICompassView
-    private lateinit var linearCompass: ICompassView
     private lateinit var userPrefs: UserPreferences
 
     private lateinit var navigationVM: NavigationViewModel
@@ -69,17 +72,16 @@ class NavigatorFragment(
     private lateinit var gpsAccuracy: LinearLayout
     private lateinit var compassAccuracy: LinearLayout
     private lateinit var speedTxt: TextView
-
     private lateinit var destinationPanel: DestinationPanel
-
     private lateinit var beaconIndicators: List<ImageView>
-
     private lateinit var visibleCompass: ICompassView
+    private lateinit var roundCompass: ICompassView
+    private lateinit var linearCompass: ICompassView
 
     private lateinit var beaconRepo: BeaconRepo
     private var flashlightState = FlashlightState.Off
 
-    private lateinit var sensorService: SensorService
+    private val sensorService by lazy { SensorService(requireContext()) }
     private val navigationService = NavigationService()
 
     private var timer: Timer? = null
@@ -92,9 +94,28 @@ class NavigatorFragment(
     ): View? {
         val view = inflater.inflate(R.layout.activity_navigator, container, false)
 
-        sensorService = SensorService(requireContext())
+        if (createBeacon != null) {
+            switchToFragment(PlaceBeaconFragment(createBeacon), addToBackStack = true)
+        }
 
-        // Get views
+        bindUI(view)
+
+        beaconRepo = BeaconRepo(requireContext())
+        compass = sensorService.getCompass()
+        orientation = sensorService.getDeviceOrientation()
+        gps = sensorService.getGPS()
+        declinationProvider = sensorService.getDeclinationProvider()
+        altimeter = sensorService.getAltimeter()
+
+        navigationVM =
+            NavigationViewModel(compass, gps, altimeter, orientation, userPrefs, beaconRepo)
+        navigationVM.beacon = initialDestination
+
+        updateUI()
+        return view
+    }
+
+    private fun bindUI(view: View){
         userPrefs = UserPreferences(requireContext())
         locationTxt = view.findViewById(R.id.location)
         altitudeTxt = view.findViewById(R.id.altitude)
@@ -139,26 +160,6 @@ class NavigatorFragment(
         beaconIndicators[0].setImageDrawable(sunImg)
         beaconIndicators[1].setImageDrawable(moonImg)
 
-        beaconRepo = BeaconRepo(requireContext())
-
-        compass = sensorService.getCompass()
-        orientation = sensorService.getDeviceOrientation()
-        gps = sensorService.getGPS()
-        declinationProvider = sensorService.getDeclinationProvider()
-
-        if (createBeacon != null) {
-            switchToFragment(
-                PlaceBeaconFragment(beaconRepo, gps, createBeacon),
-                addToBackStack = true
-            )
-        }
-
-        altimeter = sensorService.getAltimeter()
-
-        navigationVM =
-            NavigationViewModel(compass, gps, altimeter, orientation, userPrefs, beaconRepo)
-        navigationVM.beacon = initialDestination
-
         roundCompass = CompassView(
             view.findViewById(R.id.needle),
             beaconIndicators,
@@ -169,8 +170,7 @@ class NavigatorFragment(
             beaconIndicators
         )
 
-        visibleCompass = linearCompass
-        setVisibleCompass(roundCompass)
+        visibleCompass = roundCompass
 
         locationTxt.setOnLongClickListener {
             val sender = LocationSharesheet(requireContext())
@@ -240,9 +240,8 @@ class NavigatorFragment(
                 )
             )
         }
-
-        return view
     }
+
 
     private fun getFlashlightState(): FlashlightState {
         return when {
@@ -260,7 +259,7 @@ class NavigatorFragment(
         }
     }
 
-    private fun updateFlashlightUI() {
+    private fun updateFlashlight(flashlightState: FlashlightState) {
         when (flashlightState) {
             FlashlightState.On -> {
                 flashlightBtn.setImageResource(R.drawable.flashlight)
@@ -350,68 +349,68 @@ class NavigatorFragment(
 
     private fun updateUI() {
 
-        if (System.currentTimeMillis() - lastUpdated < 16) {
+        if (throttle.isThrottled() || context == null) {
             return
         }
-        lastUpdated = System.currentTimeMillis()
 
-        context ?: return
+        val position = getPosition()
+        val destination = getDestination()
 
-        updateFlashlightUI()
-        updateDestination()
-        updateAccuracy()
-
-        speedTxt.text = getString(
-            R.string.speed_format,
-            navigationVM.currentSpeed,
-            getString(navigationVM.speedUnit)
-        )
-
-        if (navigationVM.showLinearCompass) {
-            setVisibleCompass(linearCompass)
-        } else {
-            setVisibleCompass(roundCompass)
-        }
-
-        setupRuler()
-
-        azimuthTxt.text = navigationVM.azimuthTxt
-        directionTxt.text = navigationVM.azimuthDirection
-        visibleCompass.azimuth = navigationVM.azimuth
-        visibleCompass.beacons = navigationVM.nearestBeacons
-
-        altitudeTxt.text = navigationVM.altitude
-
-        visibleCompass.beacons = navigationVM.nearestBeacons
-        locationTxt.text = navigationVM.location
-
-        beaconIndicators[0].visibility = navigationVM.sunBeaconVisibility
-        beaconIndicators[1].visibility = navigationVM.moonBeaconVisibility
-        beaconIndicators[0].alpha = navigationVM.sunBeaconOpacity
-        beaconIndicators[1].alpha = navigationVM.moonBeaconOpacity
-
-        beaconIndicators.forEach {
-            if (it.height == 0) {
-                it.visibility = View.INVISIBLE
-            }
-        }
+        updateFlashlight(flashlightState)
+        updateDestination(position, destination)
+        updateAccuracy(compass.accuracy, gps.accuracy, gps.verticalAccuracy, gps.horizontalAccuracy, gps.satellites)
+        updateSpeed(position.speed)
+        updateCompassView() // TODO: Pass in needed values
+        updateRuler()
+        updateAzimuth(position.bearing)
+        updateAltitude(position.elevation)
+        updateCoordinates(position.location)
     }
 
-    private fun updateAccuracy() {
+    private fun updateAccuracy(compassAccuracy: Accuracy, gpsAccuracy: Accuracy, gpsVerticalAccuracy: Float?, gpsHorizontalAccuracy: Float?, satellites: Int) {
+        // TODO: Use these values
         gpsAccuracyTxt.text = navigationVM.gpsAccuracy
         compassAccuracyTxt.text = navigationVM.compassAccuracy
 
         if (navigationVM.showCompassAccuracy) {
-            compassAccuracy.visibility = View.VISIBLE
+            this.compassAccuracy.visibility = View.VISIBLE
         } else {
-            compassAccuracy.visibility = View.INVISIBLE
+            this.compassAccuracy.visibility = View.INVISIBLE
         }
 
         if (navigationVM.showGpsAccuracy) {
-            gpsAccuracy.visibility = View.VISIBLE
+            this.gpsAccuracy.visibility = View.VISIBLE
         } else {
-            gpsAccuracy.visibility = View.INVISIBLE
+            this.gpsAccuracy.visibility = View.INVISIBLE
         }
+    }
+
+    private fun updateAltitude(altitude: Float){
+        altitudeTxt.text = if (userPrefs.distanceUnits == UserPreferences.DistanceUnits.Meters) {
+            "${altitude.roundToInt()} m"
+        } else {
+            "${LocationMath.convertToBaseUnit(altitude, UserPreferences.DistanceUnits.Feet)
+                .roundToInt()} ft"
+        }
+    }
+
+    private fun updateCoordinates(location: Coordinate){
+        locationTxt.text = userPrefs.navigation.formatLocation(location)
+    }
+
+    private fun updateSpeed(speed: Float){
+        speedTxt.text = getString(
+            R.string.speed_format,
+            LocationMath.convertToBaseSpeed(speed, userPrefs.distanceUnits).roundPlaces(1)
+                .toString(),
+            getString(navigationVM.speedUnit)
+        )
+
+    }
+
+    private fun updateAzimuth(azimuth: Bearing){
+        azimuthTxt.text = getString(R.string.degree_format, azimuth.value.roundToInt())
+        directionTxt.text = azimuth.direction.symbol
     }
 
     private fun onOrientationUpdate(): Boolean {
@@ -441,7 +440,7 @@ class NavigatorFragment(
         return navigationVM.showDestination
     }
 
-    private fun setupRuler() {
+    private fun updateRuler() {
         val dpi = resources.displayMetrics.densityDpi
         val height =
             navigationVM.rulerScale * ruler.height / dpi.toDouble() * if (userPrefs.distanceUnits == UserPreferences.DistanceUnits.Meters) 2.54 else 1.0
@@ -500,7 +499,7 @@ class NavigatorFragment(
     }
 
     private fun updateNavigator() {
-        if (navigationVM.showDestination) {
+        if (isNavigating()) {
             // Navigating
             gps.start(this::onLocationUpdate)
             beaconBtn.setImageDrawable(context?.getDrawable(R.drawable.ic_cancel))
@@ -513,17 +512,39 @@ class NavigatorFragment(
     }
 
 
-    private fun updateDestination() {
-        val destination = getDestination()
-
+    private fun updateDestination(position: Position, destination: Beacon?) {
         if (destination == null) {
             destinationPanel.hide()
             return
         }
 
-        val position = getPosition()
-        val delta = getDelta(position, destination)
-        destinationPanel.show(position, destination, delta)
+        destinationPanel.show(position, destination)
+    }
+
+    private fun updateCompassView(){
+        setVisibleCompass(getCompassView())
+        beaconIndicators[0].visibility = navigationVM.sunBeaconVisibility
+        beaconIndicators[1].visibility = navigationVM.moonBeaconVisibility
+        beaconIndicators[0].alpha = navigationVM.sunBeaconOpacity
+        beaconIndicators[1].alpha = navigationVM.moonBeaconOpacity
+
+        beaconIndicators.forEach {
+            if (it.height == 0) {
+                it.visibility = View.INVISIBLE
+            }
+        }
+    }
+
+    private fun getCompassView(): ICompassView {
+        return if (navigationVM.showLinearCompass) {
+            linearCompass
+        } else {
+            roundCompass
+        }
+    }
+
+    private fun isNavigating(): Boolean {
+        return navigationVM.showDestination
     }
 
     private fun getDestination(): Beacon? {
@@ -531,12 +552,8 @@ class NavigatorFragment(
         return navigationVM.visibleBeacon
     }
 
-    private fun getDelta(position: Position, beacon: Beacon): NavigationDelta {
-        return navigationService.delta(position, beacon, declinationProvider.declination)
-    }
-
     private fun getPosition(): Position {
-        return Position(gps.location, altimeter.altitude, compass.bearing, gps.speed)
+        return Position(gps.location, altimeter.altitude, compass.bearing, declinationProvider.declination, gps.speed)
     }
 
 

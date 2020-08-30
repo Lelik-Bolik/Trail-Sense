@@ -24,8 +24,6 @@ import com.kylecorry.trail_sense.shared.sensors.SensorService
 
 
 class PlaceBeaconFragment(
-    private val _repo: BeaconRepo?,
-    private val _gps: IGPS?,
     private val initialLocation: GeoUriParser.NamedCoordinate? = null,
     private val editingBeacon: Beacon? = null
 ) : Fragment() {
@@ -33,7 +31,7 @@ class PlaceBeaconFragment(
     private lateinit var beaconRepo: BeaconRepo
     private lateinit var gps: IGPS
 
-    constructor(): this(null, null, null)
+    constructor(): this( null)
 
     private lateinit var beaconName: EditText
     private lateinit var beaconLat: EditText
@@ -54,8 +52,8 @@ class PlaceBeaconFragment(
     ): View? {
         val view = inflater.inflate(R.layout.fragment_create_beacon, container, false)
 
-        beaconRepo = _repo ?: BeaconRepo(requireContext())
-        gps = _gps ?: sensorService.getGPS()
+        beaconRepo = BeaconRepo(requireContext())
+        gps = sensorService.getGPS()
         altimeter = sensorService.getAltimeter()
 
         val prefs = UserPreferences(requireContext())

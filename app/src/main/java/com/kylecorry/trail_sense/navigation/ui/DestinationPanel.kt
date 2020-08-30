@@ -36,7 +36,9 @@ class DestinationPanel(private val view: View) {
         }
     }
 
-    fun show(position: Position, destination: Beacon, delta: NavigationDelta){
+    fun show(position: Position, destination: Beacon){
+        val delta = navigationService.delta(position, destination)
+
         view.visibility = View.VISIBLE
 
         beacon = destination

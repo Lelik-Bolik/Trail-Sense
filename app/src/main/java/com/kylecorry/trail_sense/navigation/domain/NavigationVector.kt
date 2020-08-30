@@ -9,4 +9,4 @@ data class NavigationVector(val direction: Bearing, val distance: Float)
 data class NavigationDelta(val bearing: Float, val distance: Float?, val elevationChange: Float?)
 
 
-data class Position(val location: Coordinate, val elevation: Float, val bearing: Bearing, val speed: Float)
+data class Position(val location: Coordinate, val elevation: Float, val bearing: Bearing, val declination: Float, val speed: Float)
