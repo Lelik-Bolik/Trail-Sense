@@ -1,3 +1,3 @@
 package com.kylecorry.trail_sense.shared
 
-data class PermissionRationale(val title: String, val reason: String)
+data class PermissionRationale(val title: String, val reason: String, val grantText: String? = null)

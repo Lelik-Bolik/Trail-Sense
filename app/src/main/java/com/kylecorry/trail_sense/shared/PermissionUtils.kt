@@ -31,6 +31,8 @@ object PermissionUtils {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+
+
     fun requestPermissions(activity: Activity, permissions: List<String>, requestCode: Int) {
         val notGrantedPermissions = permissions.filterNot { hasPermission(activity, it) }
         if (notGrantedPermissions.isEmpty()) {
@@ -63,6 +65,7 @@ object PermissionUtils {
             )
             return
         }
+        // TODO: Use the permission rational grant text
         UiUtils.alertWithCancel(
             activity,
             rationale.title,

@@ -3,16 +3,12 @@ package com.kylecorry.trail_sense
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
-import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.preference.PreferenceManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -25,8 +21,6 @@ import com.kylecorry.trail_sense.weather.infrastructure.WeatherUpdateScheduler
 import com.kylecorry.trail_sense.weather.ui.BarometerFragment
 import com.kylecorry.trailsensecore.infrastructure.persistence.Cache
 import com.kylecorry.trailsensecore.infrastructure.system.GeoUriParser
-import com.kylecorry.trailsensecore.infrastructure.system.UiUtils
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -37,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var userPrefs: UserPreferences
     private lateinit var disclaimer: DisclaimerMessage
     private val cache by lazy { Cache(this) }
+    val permissionService by lazy { PermissionService(this) }
+
 
     private val permissions = mutableListOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
@@ -83,7 +79,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        requestPermissions(permissions)
+        val toRequest = permissions.map { Permission(it, null) }.toMutableList()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            toRequest.add(
+                Permission(
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION, PermissionRationale(
+                        getString(R.string.access_background_location),
+                        getString(R.string.access_background_location_rationale)
+                    )
+                )
+            )
+        }
+        permissionService.request(toRequest) { startApp() }
     }
 
     private fun startApp() {
@@ -202,41 +209,7 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        if (requestCode == 1 && shouldRequestBackgroundLocation()) {
-            requestBackgroundLocation()
-        } else {
-            startApp()
-        }
-    }
-
-    private fun hasBackgroundLocation(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || PermissionUtils.hasPermission(
-            this,
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        )
-    }
-
-    private fun shouldRequestBackgroundLocation(): Boolean {
-        return PermissionUtils.isLocationEnabled(this) &&
-                !hasBackgroundLocation() &&
-                cache.getBoolean(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != true
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun requestBackgroundLocation() {
-        cache.putBoolean(Manifest.permission.ACCESS_BACKGROUND_LOCATION, true)
-        PermissionUtils.requestPermissionsWithRationale(
-            this,
-            listOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), PermissionRationale(
-                getString(R.string.access_background_location),
-                getString(R.string.access_background_location_rationale)
-            ),
-            2
-        )
-    }
-
-    private fun requestPermissions(permissions: List<String>, requestCode: Int = 1) {
-        PermissionUtils.requestPermissions(this, permissions, requestCode)
+        permissionService.onPermissionResult(requestCode, permissions.toList())
     }
 
     companion object {
