@@ -22,16 +22,18 @@ import com.kylecorry.trail_sense.shared.sensors.*
 import com.kylecorry.trailsensecore.infrastructure.system.NotificationUtils
 import com.kylecorry.trail_sense.weather.domain.WeatherService
 import com.kylecorry.trail_sense.weather.infrastructure.WeatherNotificationService
-import com.kylecorry.trail_sense.weather.infrastructure.WeatherUpdateWorker
 import com.kylecorry.trail_sense.weather.infrastructure.database.PressureRepo
+import com.kylecorry.trail_sense.weather.infrastructure.receivers.WeatherUpdateReceiver
 import com.kylecorry.trailsensecore.domain.weather.PressureAltitudeReading
 import com.kylecorry.trailsensecore.domain.weather.Weather
 import com.kylecorry.trailsensecore.infrastructure.sensors.altimeter.IAltimeter
 import com.kylecorry.trailsensecore.infrastructure.sensors.barometer.IBarometer
 import com.kylecorry.trailsensecore.infrastructure.sensors.temperature.IThermometer
+import com.kylecorry.trailsensecore.infrastructure.system.AlarmUtils
 import com.kylecorry.trailsensecore.infrastructure.time.Intervalometer
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZonedDateTime
 
 class WeatherUpdateService : Service() {
@@ -76,8 +78,7 @@ class WeatherUpdateService : Service() {
         altimeter = sensorService.getAltimeter(true)
         thermometer = sensorService.getThermometer()
 
-        WeatherUpdateWorker.start(applicationContext, userPrefs.weather.weatherUpdateFrequency)
-
+        scheduleNextAlarm()
 
         createChannel(
             applicationContext,
@@ -102,7 +103,21 @@ class WeatherUpdateService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun releaseWakelock(){
+    private fun scheduleNextAlarm() {
+        AlarmUtils.cancel(
+            applicationContext,
+            WeatherUpdateReceiver.pendingIntent(applicationContext)
+        )
+        AlarmUtils.set(
+            applicationContext,
+            LocalDateTime.now().plus(userPrefs.weather.weatherUpdateFrequency),
+            WeatherUpdateReceiver.pendingIntent(applicationContext),
+            exact = true,
+            allowWhileIdle = true
+        )
+    }
+
+    private fun releaseWakelock() {
         try {
             if (wakelock?.isHeld == true) {
                 wakelock?.release()
