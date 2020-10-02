@@ -15,10 +15,12 @@ class WeatherUpdateReceiver : BroadcastReceiver() {
 
     companion object {
 
-        const val PI_ID = 283095423
+        private const val PI_ID = 283095423
 
         fun intent(context: Context): Intent {
-            return Intent(context, WeatherUpdateReceiver::class.java)
+            return Intent(context, WeatherUpdateReceiver::class.java).apply {
+                flags = Intent.FLAG_RECEIVER_FOREGROUND
+            }
         }
 
         fun pendingIntent(context: Context): PendingIntent {
