@@ -19,6 +19,7 @@ import com.kylecorry.trail_sense.navigation.domain.FlashlightState
 import com.kylecorry.trail_sense.navigation.domain.NavigationService
 import com.kylecorry.trailsensecore.domain.geo.Bearing
 import com.kylecorry.trail_sense.navigation.infrastructure.database.BeaconRepo
+import com.kylecorry.trail_sense.navigation.infrastructure.database.BeaconRepo2
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.FlashlightHandler
 import com.kylecorry.trail_sense.navigation.infrastructure.share.LocationSharesheet
 import com.kylecorry.trail_sense.shared.*
@@ -74,6 +75,7 @@ class NavigatorFragment : Fragment() {
     private lateinit var visibleCompass: ICompassView
 
     private val beaconRepo by lazy { BeaconRepo(requireContext()) }
+    private val beaconRepo2 by lazy { BeaconRepo2(requireContext()) }
     private var flashlightState = FlashlightState.Off
 
     private val sensorService by lazy { SensorService(requireContext()) }
@@ -340,6 +342,7 @@ class NavigatorFragment : Fragment() {
         useTrueNorth = userPrefs.navigation.useTrueNorth
         // Load the latest beacons
         beacons = beaconRepo.get()
+        val beacon2 = beaconRepo2.get()
 
         // Resume navigation
         val lastBeaconId = cache.getLong(LAST_BEACON_ID)
