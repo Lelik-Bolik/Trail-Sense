@@ -7,6 +7,19 @@
     android:layout_height="match_parent"
     tools:context=".navigation.ui.NavigatorFragment">
 
+    <androidx.camera.view.CameraView
+        android:id="@+id/view_camera"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:pinchToZoomEnabled="false"
+        app:lensFacing="back"
+        app:captureMode="mixed"
+        app:scaleType="fitCenter"
+        app:layout_constraintBottom_toTopOf="@+id/navigation_sheet"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/linearLayout"
         android:layout_width="wrap_content"
@@ -52,7 +65,7 @@
         android:id="@+id/linear_compass"
         android:layout_width="match_parent"
         android:layout_height="100dp"
-        app:backgroundColor="?android:colorBackground"
+        app:backgroundColor="@android:color/transparent"
         app:cardinalLineColor="@color/colorPrimary"
         app:degrees="0"
         app:layout_constraintBottom_toBottomOf="@+id/needle"
@@ -61,7 +74,7 @@
         app:layout_constraintTop_toTopOf="@+id/needle"
         app:lineColor="?android:textColorPrimary"
         app:markerColor="?android:textColorPrimary"
-        app:rangeDegrees="180.0"
+        app:rangeDegrees="33"
         app:showMarker="true"
         app:textColor="?android:textColorPrimary"
         app:textSize="15sp" />
@@ -326,6 +339,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/linearLayout3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center"
@@ -352,9 +366,9 @@
                 android:id="@+id/altitude"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.AppCompat.Medium"
                 android:textSize="20sp"
-                android:textAlignment="center"
                 android:textStyle="bold"
                 tools:text="180 ft" />
         </LinearLayout>
@@ -375,10 +389,10 @@
                 android:id="@+id/speed"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.AppCompat.Medium"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:textAlignment="center"
                 tools:text="1.8 mph" />
         </LinearLayout>
     </LinearLayout>

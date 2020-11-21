@@ -45,7 +45,7 @@ class LinearCompassViewHldr(private val compass: LinearCompassView, private val 
         val margin = if (isSunOrMoon) indicator.height / 2f else 0f
 
         when {
-            delta < -90 -> {
+            delta < -33/2f -> {
                 align(indicator,
                     VerticalConstraint(compass, VerticalConstraintType.Top, margin),
                     HorizontalConstraint(compass, HorizontalConstraintType.Left),
@@ -57,7 +57,7 @@ class LinearCompassViewHldr(private val compass: LinearCompassView, private val 
                     indicator.rotation = 0f
                 }
             }
-            delta > 90 -> {
+            delta > 33/2f -> {
                 align(indicator,
                     VerticalConstraint(compass, VerticalConstraintType.Top, margin),
                     null,
@@ -70,8 +70,8 @@ class LinearCompassViewHldr(private val compass: LinearCompassView, private val 
                 }
             }
             else -> {
-                val min = (azimuth - 90f).roundToInt().toFloat()
-                val max = (azimuth + 90f).roundToInt().toFloat()
+                val min = (azimuth - 33f/2f).roundToInt().toFloat()
+                val max = (azimuth + 33f/2f).roundToInt().toFloat()
                 val deltaMin = deltaAngle(bearing, min).absoluteValue / (max - min)
                 align(indicator,
                     VerticalConstraint(compass, VerticalConstraintType.Top, margin),

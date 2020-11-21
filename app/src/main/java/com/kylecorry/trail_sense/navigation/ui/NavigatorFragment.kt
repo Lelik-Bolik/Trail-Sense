@@ -1,11 +1,18 @@
 package com.kylecorry.trail_sense.navigation.ui
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.res.ColorStateList
+import android.hardware.camera2.CameraAccessException
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.core.content.getSystemService
 import androidx.fragment.app.Fragment
 import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
@@ -14,24 +21,29 @@ import com.kylecorry.trail_sense.astronomy.domain.AstronomyService
 import com.kylecorry.trail_sense.databinding.ActivityNavigatorBinding
 import com.kylecorry.trail_sense.navigation.domain.FlashlightState
 import com.kylecorry.trail_sense.navigation.domain.NavigationService
-import com.kylecorry.trailsensecore.domain.geo.Bearing
 import com.kylecorry.trail_sense.navigation.infrastructure.database.BeaconRepo
 import com.kylecorry.trail_sense.navigation.infrastructure.flashlight.FlashlightHandler
 import com.kylecorry.trail_sense.navigation.infrastructure.share.LocationSharesheet
-import com.kylecorry.trail_sense.shared.*
+import com.kylecorry.trail_sense.shared.FormatService
+import com.kylecorry.trail_sense.shared.UserPreferences
+import com.kylecorry.trail_sense.shared.sensors.DeviceOrientation
+import com.kylecorry.trail_sense.shared.sensors.SensorService
 import com.kylecorry.trailsensecore.domain.Accuracy
-import com.kylecorry.trail_sense.shared.sensors.*
+import com.kylecorry.trailsensecore.domain.geo.Bearing
 import com.kylecorry.trailsensecore.domain.navigation.Beacon
 import com.kylecorry.trailsensecore.domain.navigation.Position
 import com.kylecorry.trailsensecore.infrastructure.persistence.Cache
-import com.kylecorry.trailsensecore.infrastructure.sensors.declination.IDeclinationProvider
 import com.kylecorry.trailsensecore.infrastructure.sensors.altimeter.IAltimeter
 import com.kylecorry.trailsensecore.infrastructure.sensors.compass.ICompass
+import com.kylecorry.trailsensecore.infrastructure.sensors.declination.IDeclinationProvider
 import com.kylecorry.trailsensecore.infrastructure.sensors.gps.IGPS
+import com.kylecorry.trailsensecore.infrastructure.system.PermissionUtils
 import com.kylecorry.trailsensecore.infrastructure.system.UiUtils
 import com.kylecorry.trailsensecore.infrastructure.time.Intervalometer
 import com.kylecorry.trailsensecore.infrastructure.time.Throttle
 import java.time.Duration
+import kotlin.math.atan
+
 
 class NavigatorFragment : Fragment() {
 
@@ -83,13 +95,39 @@ class NavigatorFragment : Fragment() {
     private var destinationBearing: Bearing? = null
     private var useTrueNorth = false
 
+    @SuppressLint("MissingPermission")
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         _binding = ActivityNavigatorBinding.inflate(layoutInflater, container, false)
+        if (PermissionUtils.hasPermission(requireContext(), Manifest.permission.CAMERA)) {
+            binding.viewCamera.bindToLifecycle(viewLifecycleOwner)
+            calculateFOV(requireContext().getSystemService()!!)
+        }
         return binding.root
+    }
+
+    private fun calculateFOV(cManager: CameraManager) {
+        try {
+            for (cameraId in cManager.cameraIdList) {
+                val characteristics = cManager.getCameraCharacteristics(cameraId)
+                val cOrientation = characteristics.get(CameraCharacteristics.LENS_FACING)!!
+                if (cOrientation == CameraCharacteristics.LENS_FACING_BACK) {
+                    val maxFocus =
+                        characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                    val size = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+                    val w = size!!.width
+                    val h = size.height
+                    val horizonalAngle = (2 * atan(w / (maxFocus!![0] * 2).toDouble())).toFloat()
+                    val verticalAngle = (2 * atan(h / (maxFocus[0] * 2).toDouble())).toFloat()
+                    println("$horizonalAngle $verticalAngle")
+                }
+            }
+        } catch (e: CameraAccessException) {
+            e.printStackTrace()
+        }
     }
 
     override fun onDestroyView() {
@@ -216,7 +254,10 @@ class NavigatorFragment : Fragment() {
             if (destinationBearing == null) {
                 destinationBearing = compass.bearing
                 cache.putFloat(LAST_DEST_BEARING, compass.bearing.value)
-                UiUtils.shortToast(requireContext(), getString(R.string.toast_destination_bearing_set))
+                UiUtils.shortToast(
+                    requireContext(),
+                    getString(R.string.toast_destination_bearing_set)
+                )
             } else {
                 destinationBearing = null
                 cache.remove(LAST_DEST_BEARING)
@@ -226,7 +267,10 @@ class NavigatorFragment : Fragment() {
             if (destinationBearing == null) {
                 destinationBearing = compass.bearing
                 cache.putFloat(LAST_DEST_BEARING, compass.bearing.value)
-                UiUtils.shortToast(requireContext(), getString(R.string.toast_destination_bearing_set))
+                UiUtils.shortToast(
+                    requireContext(),
+                    getString(R.string.toast_destination_bearing_set)
+                )
             } else {
                 destinationBearing = null
                 cache.remove(LAST_DEST_BEARING)

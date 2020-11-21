@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     private val permissions = mutableListOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.CAMERA,
         "android.permission.FLASHLIGHT"
     )
 
