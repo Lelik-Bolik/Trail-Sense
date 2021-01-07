@@ -57,6 +57,11 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
             permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
+
+        // TODO: Move this to the pace beads tool
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissions.add(Manifest.permission.ACTIVITY_RECOGNITION)
+        }
     }
 
 

@@ -11,6 +11,8 @@ import com.kylecorry.trail_sense.shared.sensors.overrides.CachedAltimeter
 import com.kylecorry.trail_sense.shared.sensors.overrides.CachedGPS
 import com.kylecorry.trail_sense.shared.sensors.overrides.OverrideAltimeter
 import com.kylecorry.trail_sense.shared.sensors.overrides.OverrideGPS
+import com.kylecorry.trail_sense.shared.sensors.pedometer.IPedometer
+import com.kylecorry.trail_sense.shared.sensors.pedometer.Pedometer
 import com.kylecorry.trailsensecore.infrastructure.sensors.SensorChecker
 import com.kylecorry.trailsensecore.infrastructure.sensors.altimeter.BarometricAltimeter
 import com.kylecorry.trailsensecore.infrastructure.sensors.altimeter.FusedAltimeter
@@ -154,6 +156,11 @@ class SensorService(ctx: Context) {
         }
 
         return NullHygrometer()
+    }
+
+    fun getPedometer(): IPedometer {
+        // TODO: Do sensor/permission check
+        return Pedometer(context)
     }
 
 }
