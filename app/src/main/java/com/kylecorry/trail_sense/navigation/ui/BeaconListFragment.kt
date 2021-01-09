@@ -16,6 +16,7 @@ import androidx.navigation.fragment.findNavController
 import com.kylecorry.trail_sense.R
 import com.kylecorry.trail_sense.databinding.FragmentBeaconListBinding
 import com.kylecorry.trail_sense.navigation.infrastructure.database.BeaconRepo
+import com.kylecorry.trail_sense.navigation.infrastructure.export.CSVBeaconExporter
 import com.kylecorry.trail_sense.shared.sensors.SensorService
 import com.kylecorry.trailsensecore.domain.navigation.Beacon
 import com.kylecorry.trailsensecore.domain.navigation.BeaconGroup
@@ -238,6 +239,8 @@ class BeaconListFragment : Fragment() {
         context ?: return
 
         binding.beaconTitle.text = displayedGroup?.name ?: getString(R.string.beacon_list_title)
+
+        CSVBeaconExporter(requireActivity()).export(beaconRepo.get())
 
 
         val beacons = if (displayedGroup == null) {
